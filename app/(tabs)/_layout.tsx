@@ -35,17 +35,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      {isAdmin && (
-        <Tabs.Screen
-          name="manage"
-          options={{
-            title: 'Manage',
-            tabBarIcon: ({ size, color }) => (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
       <Tabs.Screen
         name="profile"
         options={{
@@ -55,6 +44,17 @@ export default function TabLayout() {
           ),
         }}
       />
+      {isAdmin ? (
+        <Tabs.Screen
+          name="admin"
+          options={{
+            title: 'Manage',
+            tabBarIcon: ({ size, color }) => (
+              <Ionicons name="settings" size={size} color={color} />
+            ),
+          }}
+        />
+      ) : null}
     </Tabs>
   );
 }

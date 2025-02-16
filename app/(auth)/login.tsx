@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { useAuthStore } from '../../src/store/authStore';
+import { User, UserRole } from '../../src/types/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -15,22 +16,57 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       setLoading(true);
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-      // Check if it's the admin account
+      // Check if it's admin credentials
       if (email === 'admin@jainpathshala.com' && password === 'admin@1234') {
-        setUser({
-          id: userCredential.user.uid,
-          email: email,
-          role: 'admin',
-          name: 'Admin',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          // managedClasses: ['All']
-        });
+        try {
+          // Try to sign in first
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const adminUser: User = {
+            id: userCredential.user.uid,
+            email: email,
+            role: 'admin' as UserRole,
+            name: 'Admin',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            // managedClasses: ['All']
+          };
+
+          // Update user in Firestore
+          await setDoc(doc(db, 'users', userCredential.user.uid), adminUser);
+          setUser(adminUser);
+          router.replace('/(tabs)');
+          return;
+        } catch (signInError) {
+          // If sign in fails, create the admin account
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const adminUser: User = {
+            id: userCredential.user.uid,
+            email: email,
+            role: 'admin' as UserRole,
+            name: 'Admin',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            // managedClasses: ['All']
+          };
+
+          // Create user document in Firestore
+          await setDoc(doc(db, 'users', userCredential.user.uid), adminUser);
+          setUser(adminUser);
+          router.replace('/(tabs)');
+          return;
+        }
       }
 
-      router.replace('/(tabs)');
+      // Handle regular user login
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as unknown as User;
+        setUser(userData);
+        router.replace('/(tabs)');
+      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {
