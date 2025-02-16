@@ -16,7 +16,7 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+
       // Check if it's the admin account
       if (email === 'admin@jainpathshala.com' && password === 'admin@1234') {
         setUser({
@@ -26,10 +26,10 @@ export default function LoginScreen() {
           name: 'Admin',
           createdAt: new Date(),
           updatedAt: new Date(),
-          managedClasses: ['All']
+          // managedClasses: ['All']
         });
       }
-      
+
       router.replace('/(tabs)');
     } catch (err) {
       setError('Invalid email or password');
@@ -61,13 +61,13 @@ export default function LoginScreen() {
             secureTextEntry
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          }
+
 
           <TouchableOpacity style={styles.button} onPress={handleLogin}>
             <Text style={styles.buttonText}>Sign In</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.replace('/(auth)/register')}
           >
