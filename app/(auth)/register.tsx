@@ -1,38 +1,44 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { useAuthStore } from '../../src/store/authStore';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [className, setClassName] = useState('');
   const [error, setError] = useState('');
-  const { setLoading, setUser } = useAuthStore();
+  const { setLoading } = useAuthStore();
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
+    if (!email || !password || !name || !className) {
+      setError('All fields are required');
+      return;
+    }
+
     try {
       setLoading(true);
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Check if it's the admin account
-      if (email === 'admin@jainpathshala.com' && password === 'admin@1234') {
-        setUser({
-          id: userCredential.user.uid,
-          email: email,
-          role: 'admin',
-          name: 'Admin',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          managedClasses: ['All']
-        });
-      }
-      
+      // Create user document
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email,
+        name,
+        role: 'student',
+        class: className,
+        attendanceStreak: 0,
+        totalAttendance: 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
       router.replace('/(tabs)');
-    } catch (err) {
-      setError('Invalid email or password');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -41,10 +47,16 @@ export default function LoginScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Join Jain Pathshala today</Text>
 
         <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            value={name}
+            onChangeText={setName}
+          />
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -60,18 +72,25 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
           />
+          <TextInput
+            style={styles.input}
+            placeholder="Class Name"
+            value={className}
+            onChangeText={setClassName}
+          />
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
           }
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TouchableOpacity style={styles.button} onPress={handleRegister}>
+            <Text style={styles.buttonText}>Sign Up</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.linkButton}
-            onPress={() => router.replace('/(auth)/register')}
+            onPress={() => router.replace('/(auth)/login')}
           >
-            <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
+            <Text style={styles.linkText}>Already have an account? Sign In</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -127,6 +146,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 10,
   },
   buttonText: {
     color: 'white',

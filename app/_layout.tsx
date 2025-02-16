@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
-import { useAuthStore } from './store/authStore';
+import { useAuthStore } from '../src/store/authStore';
 
 export default function RootLayout() {
   const { setUser, setLoading } = useAuthStore();
@@ -13,6 +13,21 @@ export default function RootLayout() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
+          // Check if it's the admin account
+          if (firebaseUser.email === 'admin@jainpathshala.com') {
+            setUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email!,
+              role: 'admin',
+              name: 'Admin',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              managedClasses: ['All']
+            });
+            router.replace('/(tabs)');
+            return;
+          }
+
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             setUser({

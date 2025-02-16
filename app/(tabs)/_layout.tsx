@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../../src/store/authStore';
 
 export default function TabLayout() {
   const { user } = useAuthStore();
