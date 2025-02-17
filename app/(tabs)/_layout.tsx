@@ -44,7 +44,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      {isAdmin ? (
+      {isAdmin && (
         <Tabs.Screen
           name="admin"
           options={{
@@ -54,7 +54,7 @@ export default function TabLayout() {
             ),
           }}
         />
-      ) : null}
+      )}
     </Tabs>
   );
 }

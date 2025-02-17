@@ -100,7 +100,7 @@ export default function GathasScreen() {
               {new Date(gatha.completedDate).toLocaleDateString()}
             </Text>
             {gatha.notes && <Text style={styles.notes}>{gatha.notes}</Text>}
-            }
+            
             <TouchableOpacity style={styles.practiceButton}>
               <Ionicons name="play-circle" size={20} color="#4CAF50" />
               <Text style={styles.practiceButtonText}>Practice Now</Text>

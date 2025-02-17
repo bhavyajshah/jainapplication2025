@@ -18,3 +18,5 @@ export const useAuthStore = create<AuthState>((set) => ({
   setError: (error) => set({ error }),
   setLoading: (isLoading) => set({ isLoading }),
 }));
+
+export default useAuthStore;

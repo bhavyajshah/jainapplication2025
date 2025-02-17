@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
+import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text, DrawerLayoutAndroid, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, query, where, orderBy, getDocs, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { collection, query, where, orderBy, getDocs, addDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { db, auth } from '../lib/firebase';
 import { useAuthStore } from '../../src/store/authStore';
 import { AttendanceRecord } from '../../src/types/attendance';
 import AttendanceCard from '../components/AttendanceCard';
 import StreakCounter from '../components/StreakCounter';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function DashboardScreen() {
   const { user } = useAuthStore();
@@ -16,25 +18,38 @@ export default function DashboardScreen() {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [drawerRef, setDrawerRef] = useState<DrawerLayoutAndroid | null>(null);
 
   const fetchAttendance = async () => {
     if (!user) return;
 
-    const attendanceRef = collection(db, 'attendance');
-    const q = query(
-      attendanceRef,
-      where('studentId', '==', user.id),
-      orderBy('date', 'desc')
-    );
+    try {
+      setDataLoading(true);
+      const attendanceRef = collection(db, 'attendance');
+      const q = query(
+        attendanceRef,
+        where('studentId', '==', user.id),
+        orderBy('date', 'desc')
+      );
 
-    const querySnapshot = await getDocs(q);
-    const records: AttendanceRecord[] = [];
-    querySnapshot.forEach((doc) => {
-      records.push({ id: doc.id, ...doc.data() } as AttendanceRecord);
-    });
+      const querySnapshot = await getDocs(q);
+      const records: AttendanceRecord[] = [];
+      querySnapshot.forEach((doc) => {
+        records.push({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().date.toDate()
+        } as AttendanceRecord);
+      });
 
-    setAttendance(records);
-    calculateStreaks(records);
+      setAttendance(records);
+      calculateStreaks(records);
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    } finally {
+      setDataLoading(false);
+    }
   };
 
   const calculateStreaks = (records: AttendanceRecord[]) => {
@@ -75,23 +90,33 @@ export default function DashboardScreen() {
       }
 
       // Create attendance request
-      await addDoc(collection(db, 'attendance'), {
+      const attendanceData = {
         studentId: user.id,
-        date: Timestamp.fromDate(new Date()),
+        date: serverTimestamp(),
         status: 'under_review',
         reviewRequest: {
           reason: 'Student marked attendance',
-          timestamp: Timestamp.fromDate(new Date()),
+          timestamp: serverTimestamp(),
           status: 'pending'
         }
-      });
+      };
 
+      await addDoc(collection(db, 'attendance'), attendanceData);
       await fetchAttendance();
     } catch (error) {
       console.error('Error marking attendance:', error);
-      alert('Failed to mark attendance');
+      alert('Failed to mark attendance. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
@@ -102,48 +127,100 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => {
-    fetchAttendance();
+    if (user) {
+      fetchAttendance();
+    }
   }, [user]);
+
+  const navigationView = (
+    <View style={styles.drawer}>
+      <View style={styles.drawerHeader}>
+        <Text style={styles.drawerTitle}>Menu</Text>
+      </View>
+      <TouchableOpacity style={styles.drawerItem} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+        <Text style={styles.drawerItemText}>Logout</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   if (!user) return null;
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.header}>
-          <Text style={styles.welcomeText}>Welcome, {user.name}!</Text>
-          <TouchableOpacity
-            style={[styles.markAttendanceButton, loading && styles.buttonDisabled]}
-            onPress={markAttendance}
-            disabled={loading}
-          >
-            <Ionicons name="checkmark-circle" size={24} color="white" />
-            <Text style={styles.markAttendanceText}>
-              {loading ? 'Marking...' : 'Mark Attendance'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+  const MainContent = () => (
+    <ScrollView
+      style={styles.scrollView}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.header}>
+        <Text style={styles.welcomeText}>Welcome, {user.name}!</Text>
+        <TouchableOpacity
+          style={[styles.markAttendanceButton, loading && styles.buttonDisabled]}
+          onPress={markAttendance}
+          disabled={loading}
+        >
+          <Ionicons name="checkmark-circle" size={24} color="white" />
+          <Text style={styles.markAttendanceText}>
+            {loading ? 'Marking...' : 'Mark Attendance'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
 
-        <StreakCounter
-          currentStreak={currentStreak}
-          longestStreak={longestStreak}
-        />
+      <StreakCounter
+        currentStreak={currentStreak}
+        longestStreak={longestStreak}
+      />
 
-        <View style={styles.attendanceList}>
-          <Text style={styles.sectionTitle}>Recent Attendance</Text>
-          {attendance.map((record) => (
+      <View style={styles.attendanceList}>
+        <Text style={styles.sectionTitle}>Recent Attendance</Text>
+        {dataLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4CAF50" />
+            <Text style={styles.loadingText}>Loading attendance...</Text>
+          </View>
+        ) : attendance.length > 0 ? (
+          attendance.map((record) => (
             <AttendanceCard
               key={record.id}
               record={record}
             />
-          ))}
-        </View>
-      </ScrollView>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={48} color="#666" />
+            <Text style={styles.emptyStateText}>No attendance records yet</Text>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+
+  if (Platform.OS === 'android') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <DrawerLayoutAndroid
+          ref={(ref) => setDrawerRef(ref)}
+          drawerWidth={300}
+          drawerPosition="left"
+          renderNavigationView={() => navigationView}
+        >
+          <MainContent />
+        </DrawerLayoutAndroid>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <MainContent />
     </SafeAreaView>
   );
 }
@@ -194,5 +271,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     margin: 16,
+  },
+  loadingContainer: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    backgroundColor: '#FEE2E2',
+  },
+  logoutText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  drawer: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  drawerHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  drawerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  drawerItemText: {
+    marginLeft: 16,
+    fontSize: 16,
+    color: '#333',
   },
 });

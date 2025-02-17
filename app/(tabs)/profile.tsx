@@ -20,31 +20,41 @@ export default function ProfileScreen() {
 
   if (!user) return null;
 
+  const getProfileImage = () => {
+    if (user.role === 'admin') {
+      return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&fit=crop';
+    }
+    return 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&h=200&fit=crop';
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&h=200&fit=crop' }}
+          source={{ uri: getProfileImage() }}
           style={styles.avatar}
         />
         <Text style={styles.name}>{user.name}</Text>
         <Text style={styles.role}>{user.role.toUpperCase()}</Text>
+        <Text style={styles.email}>{user.email}</Text>
       </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>85%</Text>
-          <Text style={styles.statLabel}>Attendance</Text>
+      {user.role === 'student' && (
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>85%</Text>
+            <Text style={styles.statLabel}>Attendance</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>12</Text>
+            <Text style={styles.statLabel}>Gathas</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>4.8</Text>
+            <Text style={styles.statLabel}>Rating</Text>
+          </View>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>12</Text>
-          <Text style={styles.statLabel}>Gathas</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>4.8</Text>
-          <Text style={styles.statLabel}>Rating</Text>
-        </View>
-      </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Settings</Text>
@@ -112,6 +122,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+    marginBottom: 8,
+  },
+  email: {
+    fontSize: 16,
+    color: '#666',
   },
   statsContainer: {
     flexDirection: 'row',
