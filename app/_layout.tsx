@@ -1,10 +1,10 @@
+import { Stack, Slot } from 'expo-router';
 import { useEffect } from 'react';
-import { Slot, router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from './lib/firebase';
 import { useAuthStore } from '../src/store/authStore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from './lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { User } from '../src/types/auth';
 
 export default function RootLayout() {
   const { setUser, setLoading } = useAuthStore();
@@ -12,36 +12,18 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
+        setLoading(true);
         if (firebaseUser) {
-          // Check if it's the admin account
-          if (firebaseUser.email === 'admin@jainpathshala.com') {
-            setUser({
-              id: firebaseUser.uid,
-              email: firebaseUser.email!,
-              role: 'admin',
-              name: 'Admin',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              managedClasses: ['All']
-            });
-            router.replace('/(tabs)');
-            return;
-          }
-
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
-            setUser({
-              id: firebaseUser.uid,
+            const userData = {
               ...userDoc.data(),
-            });
-            router.replace('/(tabs)');
-          } else {
-            setUser(null);
-            router.replace('/(auth)/login');
+              id: firebaseUser.uid,
+            } as User;
+            setUser(userData);
           }
         } else {
           setUser(null);
-          router.replace('/(auth)/login');
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -54,10 +36,5 @@ export default function RootLayout() {
     return () => unsubscribe();
   }, []);
 
-  return (
-    <>
-      <StatusBar style="auto" />
-      <Slot />
-    </>
-  );
+  return <Slot />;
 }

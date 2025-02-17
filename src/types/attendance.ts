@@ -32,3 +32,5 @@ export interface Announcement {
     name: string;
   }[];
 }
+
+export default {};

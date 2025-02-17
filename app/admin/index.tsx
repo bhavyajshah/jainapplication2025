@@ -6,6 +6,9 @@ import { db } from '../lib/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Student } from '../../src/types';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { useAuthStore } from '../../src/store/authStore';
 
 export default function AdminDashboardScreen() {
     const [students, setStudents] = useState<Student[]>([]);
@@ -15,6 +18,7 @@ export default function AdminDashboardScreen() {
         total: number;
     }>({ present: 0, absent: 0, total: 0 });
     const [refreshing, setRefreshing] = useState(false);
+    const { setUser } = useAuthStore();
 
     const fetchStudentsAndAttendance = async () => {
         try {
@@ -69,6 +73,16 @@ export default function AdminDashboardScreen() {
         fetchStudentsAndAttendance();
     }, []);
 
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            setUser(null);
+            router.replace('/(auth)/login');
+        } catch (error) {
+            console.error('Error logging out:', error);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView
@@ -83,19 +97,22 @@ export default function AdminDashboardScreen() {
                         <Text style={styles.headerTitle}>Admin Dashboard</Text>
                         <Text style={styles.headerSubtitle}>Welcome back, Admin</Text>
                     </View>
+                    <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+                        <Text style={styles.logoutText}>Logout</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Quick Stats Cards */}
                 <View style={styles.statsContainer}>
-                    <View style={[styles.statCard, { backgroundColor: '#4CAF50' }]}>
+                    <View style={[styles.statCard, { backgroundColor: '#4CAF50' }]} >
                         <Text style={styles.statNumber}>{todayAttendance.present}</Text>
                         <Text style={styles.statLabel}>Present Today</Text>
                     </View>
-                    <View style={[styles.statCard, { backgroundColor: '#F44336' }]}>
+                    <View style={[styles.statCard, { backgroundColor: '#F44336' }]} >
                         <Text style={styles.statNumber}>{todayAttendance.absent}</Text>
                         <Text style={styles.statLabel}>Absent Today</Text>
                     </View>
-                    <View style={[styles.statCard, { backgroundColor: '#2196F3' }]}>
+                    <View style={[styles.statCard, { backgroundColor: '#2196F3' }]} >
                         <Text style={styles.statNumber}>{todayAttendance.total}</Text>
                         <Text style={styles.statLabel}>Total Students</Text>
                     </View>
@@ -107,9 +124,9 @@ export default function AdminDashboardScreen() {
                     <View style={styles.actionGrid}>
                         <TouchableOpacity
                             style={styles.actionCard}
-                            onPress={() => router.push('/admin/attendance-management')}
+                            onPress={() => router.push('/admin/attendance' as any)}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#E3F2FD' }]}>
+                            <View style={[styles.actionIcon, { backgroundColor: '#E3F2FD' }]} >
                                 <Ionicons name="calendar" size={24} color="#1976D2" />
                             </View>
                             <Text style={styles.actionTitle}>Manage Attendance</Text>
@@ -117,9 +134,9 @@ export default function AdminDashboardScreen() {
 
                         <TouchableOpacity
                             style={styles.actionCard}
-                            onPress={() => router.push('/admin/student-management')}
+                            onPress={() => router.push('/admin/students' as any)}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]}>
+                            <View style={[styles.actionIcon, { backgroundColor: '#E8F5E9' }]} >
                                 <Ionicons name="people" size={24} color="#2E7D32" />
                             </View>
                             <Text style={styles.actionTitle}>Student Management</Text>
@@ -127,9 +144,9 @@ export default function AdminDashboardScreen() {
 
                         <TouchableOpacity
                             style={styles.actionCard}
-                            onPress={() => router.push('/(admin)/announcements')}
+                            onPress={() => router.push('/admin/notifications' as any)}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]}>
+                            <View style={[styles.actionIcon, { backgroundColor: '#FFF3E0' }]} >
                                 <Ionicons name="megaphone" size={24} color="#E65100" />
                             </View>
                             <Text style={styles.actionTitle}>Announcements</Text>
@@ -137,9 +154,9 @@ export default function AdminDashboardScreen() {
 
                         <TouchableOpacity
                             style={styles.actionCard}
-                            onPress={() => router.push('/(admin)/reports')}
+                            onPress={() => router.push('/admin/reports' as any)}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]}>
+                            <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]} >
                                 <Ionicons name="bar-chart" size={24} color="#7B1FA2" />
                             </View>
                             <Text style={styles.actionTitle}>Reports</Text>
@@ -151,7 +168,7 @@ export default function AdminDashboardScreen() {
                 <View style={styles.studentsContainer}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Recent Students</Text>
-                        <TouchableOpacity onPress={() => router.push('/(admin)/student-management')}>
+                        <TouchableOpacity onPress={() => router.push('/admin/students' as any)}>
                             <Text style={styles.seeAllButton}>See All</Text>
                         </TouchableOpacity>
                     </View>
@@ -160,7 +177,7 @@ export default function AdminDashboardScreen() {
                         <TouchableOpacity
                             key={student.id}
                             style={styles.studentCard}
-                            onPress={() => router.push(`/(admin)/student/${student.id}`)}
+                            onPress={() => router.push(`/admin/student/${student.id}` as any)}
                         >
                             <Image
                                 source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop' }}
@@ -193,6 +210,9 @@ const styles = StyleSheet.create({
         paddingTop: 40,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     headerContent: {
         marginTop: 20,
@@ -207,6 +227,15 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.8)',
         marginTop: 4,
     },
+    logoutButton: {
+        backgroundColor: '#FF3D00',
+        padding: 10,
+        borderRadius: 12,
+    },
+    logoutText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
     statsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -220,6 +249,11 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     statNumber: {
         fontSize: 24,

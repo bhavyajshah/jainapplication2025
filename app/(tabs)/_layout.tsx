@@ -1,10 +1,22 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRootNavigationState } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
+import { useEffect } from 'react';
+import { router } from 'expo-router';
 
 export default function TabLayout() {
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'admin';
+  const rootNavigationState = useRootNavigationState();
+
+  useEffect(() => {
+    if (!rootNavigationState?.key) return; // Wait for navigation to be ready
+
+    if (user?.role === 'admin') {
+      router.replace('/admin');
+    }
+  }, [user, rootNavigationState?.key]);
+
+  if (user?.role === 'admin') return null;
 
   return (
     <Tabs screenOptions={{ headerShown: false }}>
@@ -18,20 +30,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="gathas"
+        name="notifications"
         options={{
-          title: 'Gathas',
+          title: 'Notifications',
           tabBarIcon: ({ size, color }) => (
-            <Ionicons name="book" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="announcements"
-        options={{
-          title: 'Announcements',
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="megaphone" size={size} color={color} />
+            <Ionicons name="notifications" size={size} color={color} />
           ),
         }}
       />
@@ -44,17 +47,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      {isAdmin && (
-        <Tabs.Screen
-          name="admin"
-          options={{
-            title: 'Manage',
-            tabBarIcon: ({ size, color }) => (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
     </Tabs>
   );
 }

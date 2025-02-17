@@ -1,48 +1,49 @@
-import { Stack } from 'expo-router';
+import { Stack, useRootNavigationState } from 'expo-router';
+import { useEffect } from 'react';
+import { router } from 'expo-router';
+import { useAuthStore } from '../../src/store/authStore';
 
 export default function AdminLayout() {
+    const { user } = useAuthStore();
+    const rootNavigationState = useRootNavigationState();
+
+    useEffect(() => {
+        if (!rootNavigationState?.key) return;
+
+        if (user?.role !== 'admin') {
+            router.replace('/(tabs)');
+        }
+    }, [user, rootNavigationState?.key]);
+
+    if (user?.role !== 'admin') return null;
+
     return (
-        <Stack>
+        <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen
-                name="index"
+                name="dashboard"
                 options={{
-                    title: 'Admin Dashboard',
-                    headerShown: false
+                    title: 'Admin Dashboard'
                 }}
             />
             <Stack.Screen
-                name="student-management"
+                name="notifications"
                 options={{
-                    title: 'Student Management',
-                    headerShown: true
+                    headerShown: true,
+                    title: 'Send Notifications'
                 }}
             />
             <Stack.Screen
-                name="attendance-management"
+                name="students"
                 options={{
-                    title: 'Attendance Management',
-                    headerShown: true
-                }}
-            />
-            <Stack.Screen
-                name="announcements"
-                options={{
-                    title: 'Announcements',
-                    headerShown: true
-                }}
-            />
-            <Stack.Screen
-                name="reports"
-                options={{
-                    title: 'Reports',
-                    headerShown: true
+                    headerShown: true,
+                    title: 'Manage Students'
                 }}
             />
             <Stack.Screen
                 name="student/[id]"
                 options={{
-                    title: 'Student Profile',
-                    headerShown: true
+                    headerShown: true,
+                    title: 'Student Profile'
                 }}
             />
         </Stack>

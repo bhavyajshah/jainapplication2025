@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -11,16 +11,19 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { setLoading, setUser } = useAuthStore();
+  const { setLoading } = useAuthStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
+    if (isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       setLoading(true);
 
       // Check if it's admin credentials
       if (email === 'admin@jainpathshala.com' && password === 'admin@1234') {
         try {
-          // Try to sign in first
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           const adminUser: User = {
             id: userCredential.user.uid,
@@ -29,16 +32,12 @@ export default function LoginScreen() {
             name: 'Admin',
             createdAt: new Date(),
             updatedAt: new Date(),
-            // managedClasses: ['All']
           };
 
-          // Update user in Firestore
           await setDoc(doc(db, 'users', userCredential.user.uid), adminUser);
-          setUser(adminUser);
-          router.replace('/(tabs)');
+          router.replace('/admin/dashboard' as any);
           return;
         } catch (signInError) {
-          // If sign in fails, create the admin account
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const adminUser: User = {
             id: userCredential.user.uid,
@@ -47,29 +46,21 @@ export default function LoginScreen() {
             name: 'Admin',
             createdAt: new Date(),
             updatedAt: new Date(),
-            // managedClasses: ['All']
           };
 
-          // Create user document in Firestore
           await setDoc(doc(db, 'users', userCredential.user.uid), adminUser);
-          setUser(adminUser);
-          router.replace('/(tabs)');
-          return;
+          return; // Let auth state change handle navigation
         }
       }
 
       // Handle regular user login
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      // Let auth state change handle navigation
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as unknown as User;
-        setUser(userData);
-        router.replace('/(tabs)');
-      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {
+      setIsSubmitting(false);
       setLoading(false);
     }
   };
@@ -88,6 +79,7 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            editable={!isSubmitting}
           />
           <TextInput
             style={styles.input}
@@ -95,17 +87,27 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            editable={!isSubmitting}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.replace('/(auth)/register')}
+            disabled={isSubmitting}
           >
             <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
           </TouchableOpacity>
@@ -163,6 +165,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: 'white',

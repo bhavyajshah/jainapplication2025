@@ -20,3 +20,5 @@ export interface Admin extends User {
   role: 'admin';
   managedClasses: string[];
 }
+
+export default {};
