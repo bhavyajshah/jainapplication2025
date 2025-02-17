@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text, DrawerLayoutAndroid, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, query, where, orderBy, getDocs, addDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
 import { useAuthStore } from '../../src/store/authStore';
-import { AttendanceRecord } from '../../src/types/attendance';
+import { AttendanceRecord } from '../../src/types';
 import AttendanceCard from '../components/AttendanceCard';
 import StreakCounter from '../components/StreakCounter';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,8 +29,7 @@ export default function DashboardScreen() {
       const attendanceRef = collection(db, 'attendance');
       const q = query(
         attendanceRef,
-        where('studentId', '==', user.id),
-        orderBy('date', 'desc')
+        where('studentId', '==', user.id)
       );
 
       const querySnapshot = await getDocs(q);
@@ -42,6 +41,9 @@ export default function DashboardScreen() {
           date: doc.data().date.toDate()
         } as AttendanceRecord);
       });
+
+      // Sort records by date after fetching
+      records.sort((a, b) => b.date.getTime() - a.date.getTime());
 
       setAttendance(records);
       calculateStreaks(records);

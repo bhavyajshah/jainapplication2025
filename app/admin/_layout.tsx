@@ -4,37 +4,44 @@ export default function AdminLayout() {
     return (
         <Stack>
             <Stack.Screen
-                name="students"
+                name="index"
                 options={{
-                    title: 'Manage Students',
+                    title: 'Admin Dashboard',
+                    headerShown: false
+                }}
+            />
+            <Stack.Screen
+                name="student-management"
+                options={{
+                    title: 'Student Management',
                     headerShown: true
                 }}
             />
             <Stack.Screen
-                name="classes"
+                name="attendance-management"
                 options={{
-                    title: 'Manage Classes',
+                    title: 'Attendance Management',
                     headerShown: true
                 }}
             />
             <Stack.Screen
-                name="create-announcement"
+                name="announcements"
                 options={{
-                    title: 'Create Announcement',
+                    title: 'Announcements',
                     headerShown: true
                 }}
             />
             <Stack.Screen
-                name="attendance-reports"
+                name="reports"
                 options={{
-                    title: 'Attendance Reports',
+                    title: 'Reports',
                     headerShown: true
                 }}
             />
             <Stack.Screen
-                name="add-gatha"
+                name="student/[id]"
                 options={{
-                    title: 'Add Gatha',
+                    title: 'Student Profile',
                     headerShown: true
                 }}
             />
