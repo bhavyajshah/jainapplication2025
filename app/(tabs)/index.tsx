@@ -20,6 +20,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [drawerRef, setDrawerRef] = useState<DrawerLayoutAndroid | null>(null);
+  const [hasMarkedToday, setHasMarkedToday] = useState(false);
 
   const fetchAttendance = async () => {
     if (!user) return;
@@ -44,6 +45,16 @@ export default function DashboardScreen() {
 
       // Sort records by date after fetching
       records.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      // Check if attendance is marked for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const hasMarked = records.some(record => {
+        const recordDate = new Date(record.date);
+        recordDate.setHours(0, 0, 0, 0);
+        return recordDate.getTime() === today.getTime();
+      });
+      setHasMarkedToday(hasMarked);
 
       setAttendance(records);
       calculateStreaks(records);
@@ -74,22 +85,12 @@ export default function DashboardScreen() {
   };
 
   const markAttendance = async () => {
-    if (!user || loading) return;
+    if (!user || loading || hasMarkedToday) return;
 
     try {
       setLoading(true);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
-      // Check if attendance already marked for today
-      const existingAttendance = attendance.find(
-        (record) => new Date(record.date).setHours(0, 0, 0, 0) === today.getTime()
-      );
-
-      if (existingAttendance) {
-        alert('Attendance already marked for today');
-        return;
-      }
 
       // Create attendance request
       const attendanceData = {
@@ -139,9 +140,30 @@ export default function DashboardScreen() {
       <View style={styles.drawerHeader}>
         <Text style={styles.drawerTitle}>Menu</Text>
       </View>
+      <TouchableOpacity
+        style={styles.drawerItem}
+        onPress={() => router.push('/(tabs)/profile')}
+      >
+        <Ionicons name="person-outline" size={24} color="#333" />
+        <Text style={styles.drawerItemText}>Profile</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.drawerItem}
+        onPress={() => router.push('/(tabs)/gathas')}
+      >
+        <Ionicons name="book-outline" size={24} color="#333" />
+        <Text style={styles.drawerItemText}>Gathas</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.drawerItem}
+        onPress={() => router.push('/(tabs)/announcements')}
+      >
+        <Ionicons name="megaphone-outline" size={24} color="#333" />
+        <Text style={styles.drawerItemText}>Announcements</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.drawerItem} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-        <Text style={styles.drawerItemText}>Logout</Text>
+        <Text style={[styles.drawerItemText, { color: '#FF3B30' }]}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -156,23 +178,25 @@ export default function DashboardScreen() {
       }
     >
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => drawerRef?.openDrawer()}
+          style={styles.menuButton}
+        >
+          <Ionicons name="menu" size={28} color="#333" />
+        </TouchableOpacity>
         <Text style={styles.welcomeText}>Welcome, {user.name}!</Text>
         <TouchableOpacity
-          style={[styles.markAttendanceButton, loading && styles.buttonDisabled]}
+          style={[
+            styles.markAttendanceButton,
+            (loading || hasMarkedToday) && styles.buttonDisabled
+          ]}
           onPress={markAttendance}
-          disabled={loading}
+          disabled={loading || hasMarkedToday}
         >
           <Ionicons name="checkmark-circle" size={24} color="white" />
           <Text style={styles.markAttendanceText}>
-            {loading ? 'Marking...' : 'Mark Attendance'}
+            {loading ? 'Marking...' : hasMarkedToday ? 'Attendance Marked' : 'Mark Attendance'}
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -241,6 +265,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+  menuButton: {
+    padding: 8,
+    marginBottom: 8,
+  },
   welcomeText: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -258,6 +286,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+    backgroundColor: '#9E9E9E',
   },
   markAttendanceText: {
     color: 'white',
@@ -293,21 +322,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 8,
-    backgroundColor: '#FEE2E2',
-  },
-  logoutText: {
-    color: '#FF3B30',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
   },
   drawer: {
     flex: 1,

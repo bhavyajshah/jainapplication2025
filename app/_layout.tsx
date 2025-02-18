@@ -5,14 +5,15 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from '../src/types/auth';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function RootLayout() {
-  const { setUser, setLoading } = useAuthStore();
+  const { setUser, setLoading, isLoading } = useAuthStore();
 
   useEffect(() => {
+    setLoading(true);
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        setLoading(true);
         if (firebaseUser) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
@@ -36,5 +37,22 @@ export default function RootLayout() {
     return () => unsubscribe();
   }, []);
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </View>
+    );
+  }
+
   return <Slot />;
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});

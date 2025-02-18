@@ -2,9 +2,10 @@ import { Stack, useRootNavigationState } from 'expo-router';
 import { useEffect } from 'react';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function AdminLayout() {
-    const { user } = useAuthStore();
+    const { user, isLoading } = useAuthStore();
     const rootNavigationState = useRootNavigationState();
 
     useEffect(() => {
@@ -15,12 +16,20 @@ export default function AdminLayout() {
         }
     }, [user, rootNavigationState?.key]);
 
+    if (isLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#4A90E2" />
+            </View>
+        );
+    }
+
     if (user?.role !== 'admin') return null;
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen
-                name="dashboard"
+                name="index"
                 options={{
                     title: 'Admin Dashboard'
                 }}
@@ -49,3 +58,12 @@ export default function AdminLayout() {
         </Stack>
     );
 }
+
+const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+});

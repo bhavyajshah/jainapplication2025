@@ -3,18 +3,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
 import { useEffect } from 'react';
 import { router } from 'expo-router';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function TabLayout() {
-  const { user } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (!rootNavigationState?.key) return; // Wait for navigation to be ready
+    if (!rootNavigationState?.key || isLoading) return;
 
     if (user?.role === 'admin') {
       router.replace('/admin');
     }
-  }, [user, rootNavigationState?.key]);
+  }, [user, rootNavigationState?.key, isLoading]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </View>
+    );
+  }
 
   if (user?.role === 'admin') return null;
 
@@ -26,6 +35,24 @@ export default function TabLayout() {
           title: 'Dashboard',
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="gathas"
+        options={{
+          title: 'Gathas',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="book" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="announcements"
+        options={{
+          title: 'Announcements',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="megaphone" size={size} color={color} />
           ),
         }}
       />
@@ -50,3 +77,12 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});

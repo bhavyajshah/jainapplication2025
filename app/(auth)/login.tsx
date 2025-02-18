@@ -1,64 +1,55 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { useAuthStore } from '../../src/store/authStore';
-import { User, UserRole } from '../../src/types/auth';
+import { User } from '../../src/types/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { setLoading } = useAuthStore();
+  const { setLoading, setUser } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
     if (isSubmitting) return;
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       setLoading(true);
+      setError('');
 
-      // Check if it's admin credentials
-      if (email === 'admin@jainpathshala.com' && password === 'admin@1234') {
-        try {
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          const adminUser: User = {
-            id: userCredential.user.uid,
-            email: email,
-            role: 'admin' as UserRole,
-            name: 'Admin',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
 
-          await setDoc(doc(db, 'users', userCredential.user.uid), adminUser);
-          router.replace('/admin/dashboard' as any);
-          return;
-        } catch (signInError) {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const adminUser: User = {
-            id: userCredential.user.uid,
-            email: email,
-            role: 'admin' as UserRole,
-            name: 'Admin',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-
-          await setDoc(doc(db, 'users', userCredential.user.uid), adminUser);
-          return; // Let auth state change handle navigation
-        }
+      if (!userDoc.exists()) {
+        throw new Error('User data not found');
       }
 
-      // Handle regular user login
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // Let auth state change handle navigation
+      const userData = {
+        ...userDoc.data(),
+        id: userCredential.user.uid,
+      } as User;
 
-    } catch (err) {
+      setUser(userData);
+
+      // Redirect based on user role
+      if (userData.role === 'admin') {
+        router.replace('/admin' as any);
+      } else {
+        router.replace('/(tabs)' as any);
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
       setError('Invalid email or password');
+      setUser(null);
     } finally {
       setIsSubmitting(false);
       setLoading(false);
@@ -90,7 +81,6 @@ export default function LoginScreen() {
             editable={!isSubmitting}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
-
 
           <TouchableOpacity
             style={[styles.button, isSubmitting && styles.buttonDisabled]}

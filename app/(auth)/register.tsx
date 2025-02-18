@@ -1,46 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { useAuthStore } from '../../src/store/authStore';
+import { User, UserRole } from '../../src/types/auth';
 
 export default function RegisterScreen() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [className, setClassName] = useState('');
   const [error, setError] = useState('');
-  const { setLoading } = useAuthStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRegister = async () => {
-    if (!email || !password || !name || !className) {
+    if (isSubmitting) return;
+    if (!name || !email || !password) {
       setError('All fields are required');
       return;
     }
 
     try {
-      setLoading(true);
+      setIsSubmitting(true);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Create user document
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        email,
-        name,
-        role: 'student',
-        class: className,
-        attendanceStreak: 0,
-        totalAttendance: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
 
-      router.replace('/(tabs)');
+      const userData: User = {
+        id: userCredential.user.uid,
+        email: email,
+        name: name,
+        role: 'user' as UserRole,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+      router.replace('/(auth)/login');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -48,7 +46,7 @@ export default function RegisterScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Jain Pathshala today</Text>
+        <Text style={styles.subtitle}>Sign up to get started</Text>
 
         <View style={styles.form}>
           <TextInput
@@ -56,6 +54,7 @@ export default function RegisterScreen() {
             placeholder="Full Name"
             value={name}
             onChangeText={setName}
+            editable={!isSubmitting}
           />
           <TextInput
             style={styles.input}
@@ -64,6 +63,7 @@ export default function RegisterScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            editable={!isSubmitting}
           />
           <TextInput
             style={styles.input}
@@ -71,24 +71,26 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            editable={!isSubmitting}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Class Name"
-            value={className}
-            onChangeText={setClassName}
-          />
-
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          }
 
-          <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Sign Up</Text>
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleRegister}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.buttonText}>Sign Up</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.replace('/(auth)/login')}
+            disabled={isSubmitting}
           >
             <Text style={styles.linkText}>Already have an account? Sign In</Text>
           </TouchableOpacity>
@@ -146,7 +148,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: 'white',

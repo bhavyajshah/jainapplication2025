@@ -1,13 +1,59 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Platform, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../../src/store/authStore';
 import { signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { router } from 'expo-router';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { AttendanceRecord } from '../../src/types';
 
 export default function ProfileScreen() {
   const { user } = useAuthStore();
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    totalClasses: 0,
+    present: 0,
+    absent: 0,
+    attendanceRate: 0,
+  });
+
+  const fetchAttendanceStats = async () => {
+    if (!user) return;
+
+    try {
+      const attendanceRef = collection(db, 'attendance');
+      const q = query(
+        attendanceRef,
+        where('studentId', '==', user.id)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const records: AttendanceRecord[] = [];
+      querySnapshot.forEach((doc) => {
+        records.push({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().date.toDate()
+        } as AttendanceRecord);
+      });
+
+      const present = records.filter(r => r.status === 'present').length;
+      const total = records.length;
+
+      setStats({
+        totalClasses: total,
+        present: present,
+        absent: total - present,
+        attendanceRate: total > 0 ? Math.round((present / total) * 100) : 0,
+      });
+
+      setAttendance(records);
+    } catch (error) {
+      console.error('Error fetching attendance stats:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -18,43 +64,54 @@ export default function ProfileScreen() {
     }
   };
 
-  if (!user) return null;
-
-  const getProfileImage = () => {
-    if (user.role === 'admin') {
-      return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&fit=crop';
-    }
-    return 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&h=200&fit=crop';
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchAttendanceStats();
+    setRefreshing(false);
   };
 
+  useEffect(() => {
+    fetchAttendanceStats();
+  }, [user]);
+
+  if (!user) return null;
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.header}>
         <Image
-          source={{ uri: getProfileImage() }}
+          source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop' }}
           style={styles.avatar}
         />
         <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.role}>{user.role.toUpperCase()}</Text>
         <Text style={styles.email}>{user.email}</Text>
+        {user.class && (
+          <View style={styles.classContainer}>
+            <Ionicons name="school" size={16} color="#666" />
+            <Text style={styles.className}>Class: {user.class}</Text>
+          </View>
+        )}
       </View>
 
-      {user.role === 'student' && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>85%</Text>
-            <Text style={styles.statLabel}>Attendance</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Gathas</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>4.8</Text>
-            <Text style={styles.statLabel}>Rating</Text>
-          </View>
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{stats.attendanceRate}%</Text>
+          <Text style={styles.statLabel}>Attendance Rate</Text>
         </View>
-      )}
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{stats.present}</Text>
+          <Text style={styles.statLabel}>Days Present</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{stats.absent}</Text>
+          <Text style={styles.statLabel}>Days Absent</Text>
+        </View>
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Settings</Text>
@@ -82,6 +139,10 @@ export default function ProfileScreen() {
         <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
+
+      <View style={styles.version}>
+        <Text style={styles.versionText}>Version 1.0.0</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -115,44 +176,52 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
-  role: {
-    fontSize: 14,
-    color: '#666',
-    backgroundColor: '#E8E8E8',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
   email: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 8,
+  },
+  classContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  className: {
+    marginLeft: 8,
+    color: '#1976D2',
+    fontWeight: '500',
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  statCard: {
+    flex: 1,
     backgroundColor: 'white',
-    margin: 16,
+    margin: 4,
     padding: 16,
     borderRadius: 12,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  statItem: {
-    alignItems: 'center',
-  },
   statValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
     marginTop: 4,
+    textAlign: 'center',
   },
   section: {
     backgroundColor: 'white',
@@ -203,5 +272,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  version: {
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: Platform.OS === 'ios' ? 0 : 16,
+  },
+  versionText: {
+    fontSize: 14,
+    color: '#999',
   },
 });
