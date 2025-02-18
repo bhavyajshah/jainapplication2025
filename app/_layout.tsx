@@ -3,14 +3,18 @@ import { useEffect } from 'react';
 import { useAuthStore } from '../src/store/authStore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { User } from '../src/types/auth';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { setupNotifications, registerForPushNotificationsAsync } from './lib/notifications';
 
 export default function RootLayout() {
   const { setUser, setLoading, isLoading } = useAuthStore();
 
   useEffect(() => {
+    // Setup notifications
+    setupNotifications();
+
     setLoading(true);
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
@@ -22,6 +26,15 @@ export default function RootLayout() {
               id: firebaseUser.uid,
             } as User;
             setUser(userData);
+
+            // Register for push notifications
+            const token = await registerForPushNotificationsAsync();
+            if (token) {
+              // Update user's push token in Firestore
+              await updateDoc(doc(db, 'users', firebaseUser.uid), {
+                pushToken: token,
+              });
+            }
           }
         } else {
           setUser(null);

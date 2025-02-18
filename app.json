@@ -23,6 +23,9 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app requires camera access for scanning QR codes."
       }
+    ,
+        "UIBackgroundModes": ["remote-notification"]
+
     },
     "android": {
       "package": "com.bhavyajshah.jainpathshala",
@@ -39,7 +42,16 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"]
+        }
+      ]
+
     ],
     "experiments": {
       "typedRoutes": true
