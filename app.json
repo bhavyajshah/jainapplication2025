@@ -3,13 +3,35 @@
     "name": "bolt-expo-nativewind",
     "slug": "bolt-expo-nativewind",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/8fa99938-cf34-49b5-aa89-7b45ad9824b5"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bhavyajshah.jainpathshala",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app requires camera access for scanning QR codes."
+      }
+    },
+    "android": {
+      "package": "com.bhavyajshah.jainpathshala",
+      "useNextNotificationsApi": true,
+      "enableProguardInReleaseBuilds": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -29,9 +51,6 @@
       "eas": {
         "projectId": "8fa99938-cf34-49b5-aa89-7b45ad9824b5"
       }
-    },
-    "android": {
-      "package": "com.bhavyajshah.jainpathshala"
     }
   }
 }
